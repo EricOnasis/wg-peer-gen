@@ -1,0 +1,14 @@
+{
+  "server": {
+    "endpoint": "vpn.example.com:51820",
+    "address": "10.10.0.1/24",
+    "listen_port": 51820,
+    "dns": "1.1.1.1",
+    "private_key": null,
+    "public_key": null
+  },
+  "peers": [
+    {"name": "laptop-eric", "allowed_ips": "10.10.0.2/32"},
+    {"name": "phone-eric", "allowed_ips": "10.10.0.3/32"}
+  ]
+}
