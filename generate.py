@@ -10,6 +10,11 @@ import os
 
 from wgkeys import generate_keypair, public_key_for
 
+try:
+    import qrcode
+except ImportError:
+    qrcode = None
+
 DEFAULT_CLIENT_ALLOWED_IPS = "0.0.0.0/0, ::/0"
 DEFAULT_PERSISTENT_KEEPALIVE = 25
 
@@ -63,10 +68,29 @@ def build_client_conf(config: dict, peer: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+def write_qr_code(conf_text: str, png_path: str, show_terminal: bool) -> None:
+    if qrcode is None:
+        print("qrcode package not installed (pip install qrcode[pil]); skipping QR generation.")
+        return
+    qr = qrcode.QRCode(border=2)
+    qr.add_data(conf_text)
+    qr.make(fit=True)
+
+    img = qr.make_image()
+    img.save(png_path)
+
+    if show_terminal:
+        qr.print_ascii(invert=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("config_file", help="Path to a peers.json file")
     parser.add_argument("--out", default="./out", help="Output directory (default: ./out)")
+    parser.add_argument("--qr", action="store_true",
+                         help="Also write a QR code PNG per client (for the WireGuard mobile app)")
+    parser.add_argument("--qr-terminal", action="store_true",
+                         help="Print each client's QR code to the terminal as ASCII")
     args = parser.parse_args()
 
     with open(args.config_file) as f:
@@ -88,10 +112,17 @@ def main():
     print(f"Wrote {os.path.join(args.out, 'server.conf')}")
 
     for peer in config["peers"]:
+        conf_text = build_client_conf(config, peer)
         path = os.path.join(clients_dir, f"{peer['name']}.conf")
         with open(path, "w") as f:
-            f.write(build_client_conf(config, peer))
+            f.write(conf_text)
         print(f"Wrote {path}")
+
+        if args.qr or args.qr_terminal:
+            png_path = os.path.join(clients_dir, f"{peer['name']}.png")
+            write_qr_code(conf_text, png_path, show_terminal=args.qr_terminal)
+            if args.qr:
+                print(f"Wrote {png_path}")
 
 
 if __name__ == "__main__":
